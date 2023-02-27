@@ -1,28 +1,28 @@
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+import os
+from flask import Flask, render_template, send_from_directory
+from azure.appconfiguration.provider import load_provider, AzureAppConfigurationKeyVaultOptions
+from azure.identity import DefaultAzureCredential
+
 app = Flask(__name__)
 
+credential = DefaultAzureCredential()
+keyvault_options = AzureAppConfigurationKeyVaultOptions(credential=credential)
+azure_app_config = load_provider(endpoint="your-enpoint", credential=credential, key_vault_options=keyvault_options)
+app.config.update(azure_app_config)
 
 @app.route('/')
 def index():
    print('Request for index page received')
-   return render_template('index.html')
+   context = {}
+   context['name'] = app.config.get('name')
+   context['language'] = app.config.get('language_code')
+   context['key'] = app.config.get('secret_key')
+   return render_template('index.html', **context)
 
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
-
-@app.route('/hello', methods=['POST'])
-def hello():
-   name = request.form.get('name')
-
-   if name:
-       print('Request for hello page received with name=%s' % name)
-       return render_template('hello.html', name = name)
-   else:
-       print('Request for hello page received with no name or blank name -- redirecting')
-       return redirect(url_for('index'))
 
 
 if __name__ == '__main__':
